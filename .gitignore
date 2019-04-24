@@ -1,0 +1,7 @@
+.vscode/
+.idea/
+
+__pacache__/
+*.py[co]
+
+.pytest-cache/
