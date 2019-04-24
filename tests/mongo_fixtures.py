@@ -13,14 +13,15 @@ def mongo_client(mongo_server):
 
 @pytest.yield_fixture(scope="session")
 def mongo_server(unused_port, session_id, docker):
-    docker.pull("mongo:4")
+    docker.pull("jamesridgway/mongo-tmpfs:4.0")
     port = unused_port()
     container = docker.create_container(
-        image="mongo:4",
+        image="jamesridgway/mongo-tmpfs:4.0",
         name="test-mongo-{}".format(session_id),
         ports=[27017], detach=True,
         host_config=docker.create_host_config(
-            port_bindings={27017: port}
+            port_bindings={27017: port},
+            privileged=True,
         )
     )
     docker.start(container=container["Id"])
