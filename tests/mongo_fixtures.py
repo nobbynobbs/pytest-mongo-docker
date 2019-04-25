@@ -29,7 +29,7 @@ def mongo_server(unused_port, session_id, docker):
     container["mongo_port"] = port
     yield container
     docker.kill(container=container["Id"])
-    docker.remove_container(container["Id"])
+    docker.remove_container(container["Id"], v=True)
 
 def wait_mongo(port):
     timeout = 0.001
