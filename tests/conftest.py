@@ -20,4 +20,4 @@ def unused_port():
 
 @pytest.fixture(scope="session")
 def docker():
-    return libdocker.APIClient(version="auto")
+    return libdocker.DockerClient(version="auto")

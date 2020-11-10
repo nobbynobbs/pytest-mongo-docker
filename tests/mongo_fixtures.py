@@ -4,39 +4,41 @@ import pymongo
 import pytest
 
 
-@pytest.yield_fixture
+MONGO_IMAGE = "mongo:3.4"
+
+
+@pytest.fixture
 def mongo_client(mongo_server):
-    port = mongo_server["mongo_port"]
-    client = pymongo.MongoClient("127.0.0.1:{}".format(port))
+    port = mongo_server.mongo_port
+    client = pymongo.MongoClient(f"127.0.0.1:{port}")
     yield client
     client.close()
 
-@pytest.yield_fixture(scope="session")
+@pytest.fixture(scope="session")
 def mongo_server(unused_port, session_id, docker):
-    docker.pull("jamesridgway/mongo-tmpfs:4.0")
     port = unused_port()
-    container = docker.create_container(
-        image="jamesridgway/mongo-tmpfs:4.0",
-        name="test-mongo-{}".format(session_id),
-        ports=[27017], detach=True,
-        host_config=docker.create_host_config(
-            port_bindings={27017: port},
-            privileged=True,
-        )
+    docker.images.pull(MONGO_IMAGE)
+    container = docker.containers.run(
+        image=MONGO_IMAGE,
+        command=["mongod", "--storageEngine", "ephemeralForTest"],
+        detach=True,
+        ports={'27017/tcp': port},
+        name=f"test-mongo-{session_id}",
+        # auto-remove=True,
+        # remove=True,
     )
-    docker.start(container=container["Id"])
     wait_mongo(port)
-    container["mongo_port"] = port
+    container.mongo_port = port
     yield container
-    docker.kill(container=container["Id"])
-    docker.remove_container(container["Id"], v=True)
+    container.stop(timeout=5)
+    container.remove(v=True)
 
 def wait_mongo(port):
     timeout = 0.001
     for _ in range(20):
         try:
-            client = pymongo.MongoClient("127.0.0.1:{}".format(port))
-            client.irkkt.command("ping")
+            client = pymongo.MongoClient(f"127.0.0.1:{port}")
+            client.test.command("ping")
         except pymongo.errors.ServerSelectionTimeoutError:
             time.sleep(timeout)
             timeout *= 2
@@ -44,6 +46,4 @@ def wait_mongo(port):
             client.close()
             return
     else:
-        raise RuntimeError("Unable to connect to mongodb at port %s", port)
-
-
+        raise RuntimeError(f"Unable to connect to mongodb at port {port}")
